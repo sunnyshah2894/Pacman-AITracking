@@ -163,4 +163,34 @@ class GreedyBustersAgent(BustersAgent):
             [beliefs for i, beliefs in enumerate(self.ghostBeliefs)
              if livingGhosts[i+1]]
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        position_with_max_prob = []
+        index = 0
+        closest_ghost_pos = None
+        min_distance_to_ghost = float("inf")
+
+        for ghostBeliefs in livingGhostPositionDistributions:
+            pos_with_max_prob = None
+            curr_max_prob_found = -1
+            for pos,prob in ghostBeliefs.items():
+                if prob>curr_max_prob_found:
+                    curr_max_prob_found = prob
+                    pos_with_max_prob = pos
+            position_with_max_prob.append(pos_with_max_prob)
+            distance_from_pacman_for_max_prob_position = self.distancer.getDistance(pacmanPosition, pos_with_max_prob)
+            if distance_from_pacman_for_max_prob_position <= min_distance_to_ghost:
+                closest_ghost_pos = pos_with_max_prob
+                min_distance_to_ghost = distance_from_pacman_for_max_prob_position
+            index += 1
+
+
+        min_distance_to_closest_goal_from_pacman = float("inf")
+        action_to_take_for_min_path = None
+        for action in legal:
+            new_successor_if_action_taken = Actions.getSuccessor(pacmanPosition, action)
+            distance_from_new_successor_to_closest_ghost = self.distancer.getDistance( new_successor_if_action_taken, closest_ghost_pos)
+            if ( distance_from_new_successor_to_closest_ghost <= min_distance_to_closest_goal_from_pacman ):
+                min_distance_to_closest_goal_from_pacman = distance_from_new_successor_to_closest_ghost
+                action_to_take_for_min_path = action
+
+        return action_to_take_for_min_path

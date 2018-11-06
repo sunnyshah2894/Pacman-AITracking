@@ -148,21 +148,35 @@ class ExactInference(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
 
+        # print noisyDistance
+        # print emissionModel
+        # print pacmanPosition
+        # print self.beliefs
+        # raw_input()
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # util.raiseNotDefined()
 
         # Replace this code with a correct observation update
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
-        allPossible = util.Counter()
-        for p in self.legalPositions:
-            trueDistance = util.manhattanDistance(p, pacmanPosition)
-            if emissionModel[trueDistance] > 0:
-                allPossible[p] = 1.0
+
+        allPossible=util.Counter()
+
+        jailPosition = self.getJailPosition()
+
+        if noisyDistance == None:
+            allPossible[jailPosition] = 1.0
+        else:
+            for p in self.legalPositions:
+                trueDistance=util.manhattanDistance(p, pacmanPosition)
+                if emissionModel[trueDistance] != 0:
+                    allPossible[p]=self.beliefs[p] * emissionModel[trueDistance]
+
 
         "*** END YOUR CODE HERE ***"
 
         allPossible.normalize()
+        # print allPossible
         self.beliefs = allPossible
 
     def elapseTime(self, gameState):
@@ -219,7 +233,17 @@ class ExactInference(InferenceModule):
         positions after a time update from a particular position.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        allPossible=util.Counter()
+
+        for x_t in self.legalPositions:
+            newGameState = self.setGhostPosition(gameState, x_t)
+            x_t_new_prob_distribution = self.getPositionDistribution(newGameState)
+            for x_t_new in x_t_new_prob_distribution:
+                allPossible[x_t_new] += x_t_new_prob_distribution[x_t_new] * self.beliefs[x_t]
+
+        allPossible.normalize()
+
+        self.beliefs=allPossible
 
     def getBeliefDistribution(self):
         return self.beliefs
