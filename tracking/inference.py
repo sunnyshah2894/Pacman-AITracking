@@ -148,11 +148,6 @@ class ExactInference(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
 
-        # print noisyDistance
-        # print emissionModel
-        # print pacmanPosition
-        # print self.beliefs
-        # raw_input()
         "*** YOUR CODE HERE ***"
         # util.raiseNotDefined()
 
@@ -162,21 +157,45 @@ class ExactInference(InferenceModule):
 
         allPossible=util.Counter()
 
+        # store the location of jail, so that we can give it prob of 1 in case of noisyDistance calculated is None
         jailPosition = self.getJailPosition()
 
+        """
+        If noisyDistance is None, set prob of jailPosition = 1, denoting that pacman has eaten the ghost.
+        else for each position, the new belief that ghost will present can be calculated as:
+            
+            We know that, as per the markov model,
+                P( x1 | e1 ) = ( P( x1 , e1 ) / P( e1 ) ) = ( P( e1 | x1 ) * P( x1 ) ) / P( e1 )
+                
+                We can ignore P( e1 ), which is basically normalizing the probability. Instead we only calculate 
+                ( P( e1 | x1 ) * P( x1 ) ) for each x1 and then normalize all the probabilities.
+            
+            Using this philosophy to our pacman problem. Our aim is to find P( ghost | position )
+            Now, we already have P( noisyDistance | trueDistance ), which is same as P( noisyDistance | position )
+            Also, we have P( position ) => probability of seeing a ghost at "position", from the beliefs stored
+            
+            So, at each step we find:
+                P( position | noisyDistance ) = P( noisyDistance | position ) * P( position )
+            for each position in list of legalPositions.
+            
+            Then we normalize all the probabilities to get our new beliefs i.e. P(position). 
+                
+        """
         if noisyDistance == None:
             allPossible[jailPosition] = 1.0
         else:
             for p in self.legalPositions:
-                trueDistance=util.manhattanDistance(p, pacmanPosition)
+                trueDistance = util.manhattanDistance(p, pacmanPosition)
+
+                # We don't want any probability to become 0, as in that case,
+                # it will never become greater than zero anytime in future
                 if emissionModel[trueDistance] != 0:
-                    allPossible[p]=self.beliefs[p] * emissionModel[trueDistance]
+                    allPossible[p] = emissionModel[trueDistance] * self.beliefs[p]
 
 
         "*** END YOUR CODE HERE ***"
 
         allPossible.normalize()
-        # print allPossible
         self.beliefs = allPossible
 
     def elapseTime(self, gameState):
@@ -233,16 +252,39 @@ class ExactInference(InferenceModule):
         positions after a time update from a particular position.
         """
         "*** YOUR CODE HERE ***"
-        allPossible=util.Counter()
+        allPossible = util.Counter()
 
-        for x_t in self.legalPositions:
-            newGameState = self.setGhostPosition(gameState, x_t)
-            x_t_new_prob_distribution = self.getPositionDistribution(newGameState)
-            for x_t_new in x_t_new_prob_distribution:
-                allPossible[x_t_new] += x_t_new_prob_distribution[x_t_new] * self.beliefs[x_t]
+        """
+            In the markov model discussed, before, we calculated:
+                P( position | noisyDistance ) = P( noisyDistance | position ) * P( position )
+            
+            But in this, the probability is only based on noisyDistance computed by the sensor and the position.
+            However, the probability should also be dependent on the how the pacman moves around i.e. the transition
+            probability of pacman from position x_old to x_new
+            
+            Thus, we should calculate P( x_new | evidences ), which can be computed as:
+            P( x_new , evidences ) = SUMMATION(for each x_old) ( P( x_new | x_old ) * P( x_old | evidences ) )
+            
+            P( x_new | x_old ) can be calculated using the getPositionDistribution method provided.
+            
+            Thus, we calculate P( x_new | evidences ) for each legal x_new i.e. each legal new position of the ghost.
+            
+            We, then simply normalize all P( x_new | evidences ) 
+        """
+
+        for x_old in self.legalPositions:
+
+            # find the new state
+            newGameState = self.setGhostPosition(gameState, x_old)
+
+            # find the distribution for x_new i.e. P( x_new | x_old )
+            x_new_prob_distribution = self.getPositionDistribution(newGameState)
+
+            # for each of the x_new, add the distribution using the formula described above.
+            for x_new in x_new_prob_distribution:
+                allPossible[x_new] += x_new_prob_distribution[x_new] * self.beliefs[x_old]
 
         allPossible.normalize()
-
         self.beliefs=allPossible
 
     def getBeliefDistribution(self):

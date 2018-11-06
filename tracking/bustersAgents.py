@@ -164,33 +164,58 @@ class GreedyBustersAgent(BustersAgent):
              if livingGhosts[i+1]]
         "*** YOUR CODE HERE ***"
 
-        position_with_max_prob = []
-        index = 0
+
+        """
+            Following is the greedy algorithm to find the best action:
+            
+                1)  For each ghost, find the position, where the probability of finding the ghost is maximum i.e. if
+                    there are n ghosts, we will find n such positions (one for each ghost)
+                2)  Out of each of this n possible positions, find the position (lets say this as closest_ghost_pos) 
+                    that is closest to pacman using the getDistance method.
+                3)  Find the action, such that if it is taken, the closest_ghost_pos is at a minimum distance from it.
+            
+        """
+
+        # To store the closest ghost position to pacman
         closest_ghost_pos = None
         min_distance_to_ghost = float("inf")
 
         for ghostBeliefs in livingGhostPositionDistributions:
+
+            # To store the position with max probability for the ghost
             pos_with_max_prob = None
             curr_max_prob_found = -1
+
+            # Iterate over all the possible ghost positions and find the position with max probability
+            # of finding the ghost
             for pos,prob in ghostBeliefs.items():
                 if prob>curr_max_prob_found:
                     curr_max_prob_found = prob
                     pos_with_max_prob = pos
-            position_with_max_prob.append(pos_with_max_prob)
+
+            # Find the distance of pacman from this max probability position
             distance_from_pacman_for_max_prob_position = self.distancer.getDistance(pacmanPosition, pos_with_max_prob)
+
+            # Check if this distance is lesser than any other previous distance computed for other ghosts.
             if distance_from_pacman_for_max_prob_position <= min_distance_to_ghost:
                 closest_ghost_pos = pos_with_max_prob
                 min_distance_to_ghost = distance_from_pacman_for_max_prob_position
-            index += 1
 
-
+        # for each action, find the distance of pacman from the closest_ghost_pos after taking the action
+        # Find the action for which this distance is minimum.
         min_distance_to_closest_goal_from_pacman = float("inf")
         action_to_take_for_min_path = None
+
         for action in legal:
+
+            # Find the distance of pacman from the closest_ghost_pos if the action is taken
             new_successor_if_action_taken = Actions.getSuccessor(pacmanPosition, action)
             distance_from_new_successor_to_closest_ghost = self.distancer.getDistance( new_successor_if_action_taken, closest_ghost_pos)
+
+            # Check if it is minimum, if yes record the action
             if ( distance_from_new_successor_to_closest_ghost <= min_distance_to_closest_goal_from_pacman ):
                 min_distance_to_closest_goal_from_pacman = distance_from_new_successor_to_closest_ghost
                 action_to_take_for_min_path = action
 
+        # return the action recorded.
         return action_to_take_for_min_path
